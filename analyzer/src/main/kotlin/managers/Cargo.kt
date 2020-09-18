@@ -65,10 +65,6 @@ class Cargo(
         ) = Cargo(managerName, analysisRoot, analyzerConfig, repoConfig)
     }
 
-    companion object {
-        private val PATH_DEPENDENCY_REGEX = Regex("""^.*\(path\+file://(.*)\)$""")
-    }
-
     override fun command(workingDir: File?) = "cargo"
 
     override fun transformVersion(output: String) = output.removePrefix("cargo ")
@@ -164,20 +160,14 @@ class Cargo(
         return metadataMapNotNull
     }
 
-    /**
-     * Check if a package is a project. All path dependencies inside of the analyzer root are treated as project
-     * dependencies.
-     */
-    private fun isProjectDependency(id: String) =
-        PATH_DEPENDENCY_REGEX.matchEntire(id)?.groups?.get(1)?.let { match ->
-            val packageDir = File(match.value)
-            packageDir.startsWith(analysisRoot)
-        } ?: false
+    private fun isProjectDependency(dependencyNode: JsonNode) =
+        // The "source" is null for path dependencies and workspace members.
+        dependencyNode["source"]?.textValue() == null
 
     private fun buildDependencyTree(
         name: String,
         version: String,
-        packages: Map<String, Package>,
+        packages: Map<JsonNode, Package>,
         metadata: JsonNode
     ): PackageReference {
         val node = metadata["packages"].single {
@@ -198,9 +188,8 @@ class Cargo(
             }
         }.toSortedSet()
 
-        val id = extractCargoId(node)
-        val pkg = packages.getValue(id)
-        val linkage = if (isProjectDependency(id)) PackageLinkage.PROJECT_STATIC else PackageLinkage.STATIC
+        val pkg = packages.getValue(node)
+        val linkage = if (isProjectDependency(node)) PackageLinkage.PROJECT_STATIC else PackageLinkage.STATIC
 
         return pkg.toReference(linkage, dependencies)
     }
@@ -242,7 +231,7 @@ class Cargo(
         val hashes = readHashes(resolveLockfile(metadata))
 
         val packages = metadata["packages"].associateBy(
-            { extractCargoId(it) },
+            { it },
             { extractPackage(it, hashes) }
         )
 
