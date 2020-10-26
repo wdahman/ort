@@ -70,6 +70,7 @@ import org.ossreviewtoolkit.utils.log
 import org.ossreviewtoolkit.utils.safeMkdirs
 import org.ossreviewtoolkit.utils.showStackTrace
 import org.ossreviewtoolkit.utils.storage.FileArchiver
+import kotlin.system.measureTimeMillis
 
 /**
  * Implementation of [Scanner] for scanners that operate locally. Packages passed to [scanPackages] are processed in
@@ -156,6 +157,25 @@ abstract class LocalScanner(name: String, config: ScannerConfiguration) : Scanne
         val storageDispatcher =
             Executors.newFixedThreadPool(5, NamedThreadFactory(ScanResultsStorage.storage.name)).asCoroutineDispatcher()
         val scanDispatcher = Executors.newSingleThreadExecutor(NamedThreadFactory(scannerName)).asCoroutineDispatcher()
+
+        log.info { "BENCH: Get scan results for ${packages.size} packages." }
+
+        val bulkFetchTime = measureTimeMillis {
+            val identifiers = packages.map { it.id }
+            val scanResults = ScanResultsStorage.storage.bulkFetchScanResults(identifiers)
+            log.info { "BENCH: Bulk fetched ${scanResults.size} scan results." }
+        }
+        log.info { "BENCH: bulk fetch took ${bulkFetchTime} ms." }
+
+        val noBulkFetchTime = measureTimeMillis {
+            val scanResults = mutableListOf<ScanResult>()
+            packages.forEach { pkg ->
+                scanResults += readFromStorage(getDetails(), pkg, outputDirectory)
+            }
+            log.info { "BENCH: fetched ${scanResults.size} scan results." }
+        }
+
+        log.info { "BENCH: no bulk fetch took ${noBulkFetchTime} ms." }
 
         return try {
             coroutineScope {

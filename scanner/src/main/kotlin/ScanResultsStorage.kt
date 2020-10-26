@@ -125,7 +125,7 @@ abstract class ScanResultsStorage {
         /**
          * Create a [PostgresStorage] based on the [config] passed in.
          */
-        private fun createPostgresStorage(config: PostgresStorageConfiguration): ScanResultsStorage {
+        fun createPostgresStorage(config: PostgresStorageConfiguration): ScanResultsStorage {
             require(config.url.isNotBlank()) {
                 "URL for PostgreSQL storage is missing."
             }
@@ -243,6 +243,8 @@ abstract class ScanResultsStorage {
 
         return addToStorage(id, scanResult)
     }
+
+    open fun bulkFetchScanResults(identifiers: Collection<Identifier>): List<ScanResult> = throw NotImplementedError()
 
     /**
      * Internal version of [read] that does not update the [access statistics][stats].

@@ -67,6 +67,14 @@ class CompositeStorage(
     override fun readFromStorage(pkg: Package, scannerDetails: ScannerDetails): Result<ScanResultContainer> =
         fetchReadResult(pkg.id) { read(pkg, scannerDetails) }
 
+    override fun bulkFetchScanResults(identifiers: Collection<Identifier>): List<ScanResult> {
+        val postgresStorage = readers.find { it is PostgresStorage }
+        if (postgresStorage != null) {
+            return postgresStorage.bulkFetchScanResults(identifiers)
+        }
+        throw NotImplementedError()
+    }
+
     /**
      * Trigger all configured writer storages to add the [scanResult] for the given [id]. Return a success result
      * if all of the writers are successful; otherwise return a failure result with an accumulated error message.

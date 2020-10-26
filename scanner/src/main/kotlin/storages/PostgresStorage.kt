@@ -36,11 +36,17 @@ import org.ossreviewtoolkit.model.ScanResult
 import org.ossreviewtoolkit.model.ScanResultContainer
 import org.ossreviewtoolkit.model.ScannerDetails
 import org.ossreviewtoolkit.model.Success
+import org.ossreviewtoolkit.model.config.PostgresStorageConfiguration
 import org.ossreviewtoolkit.model.jsonMapper
 import org.ossreviewtoolkit.scanner.ScanResultsStorage
+import org.ossreviewtoolkit.scanner.TOOL_NAME
+import org.ossreviewtoolkit.utils.ORT_FULL_NAME
 import org.ossreviewtoolkit.utils.collectMessagesAsString
 import org.ossreviewtoolkit.utils.log
 import org.ossreviewtoolkit.utils.showStackTrace
+import java.sql.DriverManager
+import java.util.Properties
+import kotlin.system.measureTimeMillis
 
 /**
  * The Postgres storage back-end.
@@ -170,6 +176,10 @@ class PostgresStorage(
         }
     }
 
+    override fun bulkFetchScanResults(identifiers: Collection<Identifier>): List<ScanResult> {
+        return bulkFetchScanResults(identifiers, connection)
+    }
+
     override fun readFromStorage(pkg: Package, scannerDetails: ScannerDetails): Result<ScanResultContainer> {
         val version = Semver(scannerDetails.version)
 
@@ -246,17 +256,41 @@ class PostgresStorage(
 
         return Success(Unit)
     }
-
-    /**
-     * The null character "\u0000" can appear in raw scan results, for example in ScanCode if the matched text for a
-     * license or copyright contains this character. Since it is not allowed in PostgreSQL JSONB columns we need to
-     * escape it before writing a string to the database.
-     * See: [https://www.postgresql.org/docs/11/datatype-json.html]
-     */
-    private fun String.escapeNull() = replace("\\u0000", "\\\\u0000")
-
-    /**
-     * Unescape the null character "\u0000". For details see [escapeNull].
-     */
-    private fun String.unescapeNull() = replace("\\\\u0000", "\\u0000")
 }
+
+/**
+ * The null character "\u0000" can appear in raw scan results, for example in ScanCode if the matched text for a
+ * license or copyright contains this character. Since it is not allowed in PostgreSQL JSONB columns we need to
+ * escape it before writing a string to the database.
+ * See: [https://www.postgresql.org/docs/11/datatype-json.html]
+ */
+private fun String.escapeNull() = replace("\\u0000", "\\\\u0000")
+
+/**
+ * Unescape the null character "\u0000". For details see [escapeNull].
+ */
+private fun String.unescapeNull() = replace("\\\\u0000", "\\u0000")
+
+private fun bulkFetchScanResults(identifiers: Collection<Identifier>, connection: Connection): List<ScanResult> {
+    val query = "SELECT scan_result FROM scan_results WHERE identifier = ANY(?)"
+
+    connection.autoCommit = false
+    val statement = connection.prepareStatement(query).apply {
+        // setString(1, id.toCoordinates())
+        setArray(1, getConnection().createArrayOf("VARCHAR", identifiers.map { it.toCoordinates() }.toTypedArray()))
+        fetchSize = identifiers.size * 2
+    }
+
+
+    val resultSet = statement.executeQuery()
+    val scanResults = mutableListOf<ScanResult>()
+
+    while (resultSet.next()) {
+        val scanResult = jsonMapper.readValue<ScanResult>(resultSet.getString(1).unescapeNull())
+        scanResults += scanResult
+    }
+
+    return scanResults
+}
+
+
