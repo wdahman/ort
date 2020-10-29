@@ -156,11 +156,11 @@ pipeline {
             steps {
                 script {
                     if (!params.PROJECT_VCS_CREDENTIALS.allWhitespace) {
-                        projectVcsCredentials += usernamePassword(credentialsId: params.PROJECT_VCS_CREDENTIALS, usernameVariable: 'LOGIN', passwordVariable: 'PASSWORD')
+                        projectVcsCredentials += usernamePassword(credentialsId: params.PROJECT_VCS_CREDENTIALS, usernameVariable: 'ORT_HTTP_USERNAME', passwordVariable: 'ORT_HTTP_PASSWORD')
                     }
 
                     if (!params.ORT_CONFIG_VCS_CREDENTIALS.allWhitespace) {
-                        ortConfigVcsCredentials += usernamePassword(credentialsId: params.ORT_CONFIG_VCS_CREDENTIALS, usernameVariable: 'LOGIN', passwordVariable: 'PASSWORD')
+                        ortConfigVcsCredentials += usernamePassword(credentialsId: params.ORT_CONFIG_VCS_CREDENTIALS, usernameVariable: 'ORT_HTTP_USERNAME', passwordVariable: 'ORT_HTTP_PASSWORD')
                     }
                 }
             }
@@ -209,8 +209,6 @@ pipeline {
             steps {
                 withCredentials(projectVcsCredentials) {
                     sh '''
-                        echo "default login $LOGIN password $PASSWORD" > $HOME/.netrc
-
                         if [ "$STACKTRACE" = "true" ]; then
                             STACKTRACE_OPTION="--stacktrace"
                         fi
@@ -221,8 +219,6 @@ pipeline {
 
                         rm -fr $PROJECT_DIR
                         /opt/ort/bin/ort $LOG_LEVEL $STACKTRACE_OPTION download --project-url $PROJECT_VCS_URL $VCS_REVISION_OPTION -o $PROJECT_DIR/source
-
-                        rm -f $HOME/.netrc
                     '''
                 }
             }
@@ -252,8 +248,6 @@ pipeline {
             steps {
                 withCredentials(ortConfigVcsCredentials) {
                     sh '''
-                        echo "default login $LOGIN password $PASSWORD" > $HOME/.netrc
-
                         if [ "$STACKTRACE" = "true" ]; then
                             STACKTRACE_OPTION="--stacktrace"
                         fi
@@ -264,8 +258,6 @@ pipeline {
 
                         rm -fr $ORT_DATA_DIR/config
                         /opt/ort/bin/ort $LOG_LEVEL $STACKTRACE_OPTION download --project-url $ORT_CONFIG_VCS_URL $VCS_REVISION_OPTION -o $ORT_DATA_DIR/config
-
-                        rm -f $HOME/.netrc
                     '''
                 }
             }
@@ -369,9 +361,7 @@ pipeline {
                                 STACKTRACE_OPTION="--stacktrace"
                             fi
 
-                            echo "default login $LOGIN password $PASSWORD" > $HOME/.netrc    
                             /opt/ort/bin/ort $LOG_LEVEL $STACKTRACE_OPTION scan -i out/results/current-result.yml -o out/results/scanner
-                            rm -f $HOME/.netrc
                         '''
 
                         if (status >= ORT_FAILURE_STATUS_CODE) unstable('Scanner issues found.')
