@@ -45,13 +45,15 @@ val okhttpVersion: String by project
 plugins {
     kotlin("jvm")
 
+    id("com.github.ben-manes.versions")
+    id("com.palantir.git-version")
     id("io.gitlab.arturbosch.detekt")
     id("org.jetbrains.dokka")
-
-    id("com.github.ben-manes.versions")
-    id("org.ajoberstar.reckon")
     id("org.jetbrains.gradle.plugin.idea-ext")
 }
+
+val gitVersion: groovy.lang.Closure<String> by extra
+version = gitVersion()
 
 // TODO: Replace this with Gradle's toolchain mechanism [1] once the Kotlin plugin supports it [2].
 // [1] https://blog.gradle.org/java-toolchains
@@ -59,11 +61,6 @@ plugins {
 val javaVersion = JavaVersion.current()
 if (!javaVersion.isCompatibleWith(JavaVersion.VERSION_11)) {
     throw GradleException("At least Java 11 is required, but Java $javaVersion is being used.")
-}
-
-reckon {
-    scopeFromProp()
-    snapshotFromProp()
 }
 
 idea {
