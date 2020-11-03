@@ -46,14 +46,13 @@ plugins {
     kotlin("jvm")
 
     id("com.github.ben-manes.versions")
-    id("com.palantir.git-version")
+    id("pl.allegro.tech.build.axion-release")
     id("io.gitlab.arturbosch.detekt")
     id("org.jetbrains.dokka")
     id("org.jetbrains.gradle.plugin.idea-ext")
 }
 
-val gitVersion: groovy.lang.Closure<String> by extra
-version = gitVersion()
+version = scmVersion.version
 
 // TODO: Replace this with Gradle's toolchain mechanism [1] once the Kotlin plugin supports it [2].
 // [1] https://blog.gradle.org/java-toolchains
