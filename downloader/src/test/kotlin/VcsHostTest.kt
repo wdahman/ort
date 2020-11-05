@@ -25,6 +25,7 @@ import io.kotest.matchers.shouldBe
 
 import java.net.URI
 
+import org.ossreviewtoolkit.downloader.VcsHost.AZURE_DEVOPS
 import org.ossreviewtoolkit.downloader.VcsHost.BITBUCKET
 import org.ossreviewtoolkit.downloader.VcsHost.GITHUB
 import org.ossreviewtoolkit.downloader.VcsHost.GITLAB
@@ -33,6 +34,43 @@ import org.ossreviewtoolkit.model.VcsInfo
 import org.ossreviewtoolkit.model.VcsType
 
 class VcsHostTest : WordSpec({
+    "The Azure DevOps implementation" should {
+        val projectUrl = "https://bitbucket.org/yevster/spdxtraxample/" +
+                "src/287aebca5e7ff4167af1fb648640dcdbdf4ec666/LICENSE.txt"
+
+        "correctly get the user or organization name" {
+            AZURE_DEVOPS.getUserOrOrganization(projectUrl) shouldBe "yevster"
+        }
+
+        "correctly get the project name" {
+            AZURE_DEVOPS.getProject(projectUrl) shouldBe "spdxtraxample"
+        }
+
+        "be able to extract VCS information from a project URL" {
+            AZURE_DEVOPS.toVcsInfo(projectUrl) shouldBe
+                    VcsInfo(
+                        type = VcsType.GIT,
+                        url = "https://bitbucket.org/yevster/spdxtraxample.git",
+                        revision = "287aebca5e7ff4167af1fb648640dcdbdf4ec666",
+                        path = "LICENSE.txt"
+                    )
+        }
+
+        "be able to create permalinks from VCS information" {
+            val vcsInfo = VcsInfo(
+                type = VcsType.GIT,
+                url = "https://bitbucket.org/yevster/spdxtraxample.git",
+                revision = "287aebca5e7ff4167af1fb648640dcdbdf4ec666",
+                path = "LICENSE.txt"
+            )
+
+            AZURE_DEVOPS.toPermalink(vcsInfo, 1) shouldBe "https://bitbucket.org/yevster/spdxtraxample/" +
+                    "src/287aebca5e7ff4167af1fb648640dcdbdf4ec666/LICENSE.txt#lines-1"
+            AZURE_DEVOPS.toPermalink(vcsInfo, 4, 8) shouldBe "https://bitbucket.org/yevster/spdxtraxample/" +
+                    "src/287aebca5e7ff4167af1fb648640dcdbdf4ec666/LICENSE.txt#lines-4:8"
+        }
+    }
+
     "The Bitbucket implementation" should {
         val projectUrl = "https://bitbucket.org/yevster/spdxtraxample/" +
                 "src/287aebca5e7ff4167af1fb648640dcdbdf4ec666/LICENSE.txt"

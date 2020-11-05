@@ -45,6 +45,25 @@ enum class VcsHost(
      */
     vararg supportedTypes: VcsType
 ) {
+    AZURE_DEVOPS("dev.azure.com", VcsType.GIT) {
+        override fun getUserOrOrgInternal(projectUrl: URI): String? {
+            TODO("Not yet implemented")
+        }
+
+        override fun getProjectInternal(projectUrl: URI): String? {
+            TODO("Not yet implemented")
+        }
+
+        override fun toVcsInfoInternal(projectUrl: URI): VcsInfo {
+            TODO("Not yet implemented")
+        }
+
+        override fun toPermalinkInternal(vcsInfo: VcsInfo, startLine: Int, endLine: Int): String {
+            TODO("Not yet implemented")
+        }
+
+    },
+
     /**
      * The enum constant to handle [Bitbucket][https://bitbucket.org/]-specific information.
      */
